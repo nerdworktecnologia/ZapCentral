@@ -14,7 +14,197 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      automation_rules: {
+        Row: {
+          action: string
+          active: boolean
+          channel: Database["public"]["Enums"]["message_channel"]
+          created_at: string
+          id: string
+          name: string
+          trigger: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          active?: boolean
+          channel?: Database["public"]["Enums"]["message_channel"]
+          created_at?: string
+          id?: string
+          name: string
+          trigger: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          active?: boolean
+          channel?: Database["public"]["Enums"]["message_channel"]
+          created_at?: string
+          id?: string
+          name?: string
+          trigger?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          channel: Database["public"]["Enums"]["message_channel"]
+          created_at: string
+          id: string
+          last_message: string | null
+          last_message_time: string | null
+          lead_id: string
+          unread: number
+          updated_at: string
+        }
+        Insert: {
+          channel?: Database["public"]["Enums"]["message_channel"]
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_time?: string | null
+          lead_id: string
+          unread?: number
+          updated_at?: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["message_channel"]
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_time?: string | null
+          lead_id?: string
+          unread?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string
+          status: Database["public"]["Enums"]["lead_status"]
+          tag: Database["public"]["Enums"]["lead_tag"]
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          tag?: Database["public"]["Enums"]["lead_tag"]
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          tag?: Database["public"]["Enums"]["lead_tag"]
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          channel: Database["public"]["Enums"]["message_channel"]
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          sender: Database["public"]["Enums"]["message_sender"]
+          timestamp: string
+        }
+        Insert: {
+          channel?: Database["public"]["Enums"]["message_channel"]
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          sender: Database["public"]["Enums"]["message_sender"]
+          timestamp?: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["message_channel"]
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          sender?: Database["public"]["Enums"]["message_sender"]
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          api_key: string | null
+          company_email: string
+          company_name: string
+          created_at: string
+          id: string
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          company_email?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          company_email?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +213,10 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      lead_status: "novo" | "atendimento" | "proposta" | "fechado"
+      lead_tag: "quente" | "frio" | "cliente"
+      message_channel: "whatsapp" | "instagram"
+      message_sender: "lead" | "agent" | "ai"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +343,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      lead_status: ["novo", "atendimento", "proposta", "fechado"],
+      lead_tag: ["quente", "frio", "cliente"],
+      message_channel: ["whatsapp", "instagram"],
+      message_sender: ["lead", "agent", "ai"],
+    },
   },
 } as const
