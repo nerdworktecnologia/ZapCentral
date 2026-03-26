@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { leads as initialLeads, Lead, LeadStatus } from "@/lib/mock-data";
+import { useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, GripVertical } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Tables } from "@/integrations/supabase/types";
+
+type LeadStatus = Tables<"leads">["status"];
 
 const columns: { id: LeadStatus; label: string; color: string }[] = [
   { id: "novo", label: "Novo Lead", color: "bg-info/10 text-info" },
@@ -18,16 +22,28 @@ const tagStyles: Record<string, string> = {
 };
 
 export default function CRM() {
-  const [leadsList, setLeadsList] = useState<Lead[]>(initialLeads);
+  const { data: leads, isLoading } = useLeads();
+  const updateLead = useUpdateLead();
   const [dragging, setDragging] = useState<string | null>(null);
 
   const handleDragStart = (id: string) => setDragging(id);
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
   const handleDrop = (status: LeadStatus) => {
     if (!dragging) return;
-    setLeadsList((prev) => prev.map((l) => l.id === dragging ? { ...l, status } : l));
+    updateLead.mutate({ id: dragging, status });
     setDragging(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-[400px]" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -38,7 +54,7 @@ export default function CRM() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {columns.map((col) => {
-          const colLeads = leadsList.filter((l) => l.status === col.id);
+          const colLeads = (leads || []).filter((l) => l.status === col.id);
           return (
             <div
               key={col.id}
@@ -47,11 +63,9 @@ export default function CRM() {
               onDrop={() => handleDrop(col.id)}
             >
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${col.color}`}>
-                    {col.label}
-                  </span>
-                </div>
+                <span className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${col.color}`}>
+                  {col.label}
+                </span>
                 <span className="text-xs text-muted-foreground font-medium">{colLeads.length}</span>
               </div>
 
@@ -83,7 +97,7 @@ export default function CRM() {
                         )}
                         {lead.value > 0 && (
                           <p className="text-xs font-semibold text-primary mt-1.5">
-                            R$ {lead.value.toLocaleString("pt-BR")}
+                            R$ {Number(lead.value).toLocaleString("pt-BR")}
                           </p>
                         )}
                       </div>

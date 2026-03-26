@@ -1,10 +1,11 @@
-import { leads } from "@/lib/mock-data";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLeads } from "@/hooks/use-leads";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, Phone, Mail } from "lucide-react";
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const tagStyles: Record<string, string> = {
   quente: "bg-destructive/10 text-destructive border-destructive/20",
@@ -14,11 +15,23 @@ const tagStyles: Record<string, string> = {
 
 export default function Clientes() {
   const [search, setSearch] = useState("");
-  const filtered = leads.filter((l) =>
+  const { data: leads, isLoading } = useLeads();
+
+  const filtered = (leads || []).filter((l) =>
     l.name.toLowerCase().includes(search.toLowerCase()) ||
     l.phone.includes(search) ||
     l.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6 max-w-6xl mx-auto">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-10 w-80" />
+        <Skeleton className="h-[300px]" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -63,7 +76,7 @@ export default function Clientes() {
                     <span className="text-sm capitalize">{lead.status}</span>
                   </TableCell>
                   <TableCell className="text-right font-semibold">
-                    {lead.value > 0 ? `R$ ${lead.value.toLocaleString("pt-BR")}` : "—"}
+                    {Number(lead.value) > 0 ? `R$ ${Number(lead.value).toLocaleString("pt-BR")}` : "—"}
                   </TableCell>
                 </TableRow>
               ))}

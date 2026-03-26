@@ -1,7 +1,9 @@
 import { TrendingUp, TrendingDown, Users, Target, DollarSign, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { kpiData, chartData, recentActivities } from "@/lib/mock-data";
+import { chartData, recentActivities } from "@/lib/mock-data";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { useLeads } from "@/hooks/use-leads";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function KpiCard({ title, value, growth, icon: Icon, prefix = "" }: {
   title: string; value: string | number; growth: number; icon: React.ElementType; prefix?: string;
@@ -31,6 +33,23 @@ const activityIcons: Record<string, string> = {
 };
 
 export default function Dashboard() {
+  const { data: leads, isLoading } = useLeads();
+
+  const totalLeads = leads?.length || 0;
+  const conversions = leads?.filter(l => l.status === "fechado").length || 0;
+  const revenue = leads?.reduce((sum, l) => sum + Number(l.value), 0) || 0;
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <div>
@@ -39,10 +58,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Leads do Mês" value={kpiData.leadsThisMonth} growth={kpiData.leadsGrowth} icon={Users} />
-        <KpiCard title="Conversões" value={kpiData.conversions} growth={kpiData.conversionGrowth} icon={Target} />
-        <KpiCard title="Faturamento" value={kpiData.revenue} growth={kpiData.revenueGrowth} icon={DollarSign} prefix="R$ " />
-        <KpiCard title="Tempo de Resposta" value={kpiData.avgResponseTime} growth={kpiData.responseGrowth} icon={Clock} />
+        <KpiCard title="Leads do Mês" value={totalLeads} growth={12.5} icon={Users} />
+        <KpiCard title="Conversões" value={conversions} growth={8.2} icon={Target} />
+        <KpiCard title="Faturamento" value={revenue} growth={15.3} icon={DollarSign} prefix="R$ " />
+        <KpiCard title="Tempo de Resposta" value="3min" growth={-22} icon={Clock} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
