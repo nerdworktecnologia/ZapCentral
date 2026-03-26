@@ -4,8 +4,41 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Webhook, Users } from "lucide-react";
+import { useSettings, useUpdateSettings } from "@/hooks/use-settings";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 export default function Configuracoes() {
+  const { data: settings, isLoading } = useSettings();
+  const updateSettings = useUpdateSettings();
+  const [companyName, setCompanyName] = useState("");
+  const [companyEmail, setCompanyEmail] = useState("");
+
+  useEffect(() => {
+    if (settings) {
+      setCompanyName(settings.company_name);
+      setCompanyEmail(settings.company_email);
+    }
+  }, [settings]);
+
+  const handleSave = () => {
+    if (!settings) return;
+    updateSettings.mutate(
+      { id: settings.id, company_name: companyName, company_email: companyEmail },
+      { onSuccess: () => toast.success("Configurações salvas!") }
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6 max-w-3xl mx-auto">
+        <Skeleton className="h-8 w-48" />
+        {[1,2,3].map(i => <Skeleton key={i} className="h-40" />)}
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-3xl mx-auto">
       <div>
@@ -22,13 +55,15 @@ export default function Configuracoes() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Nome da Empresa</Label>
-            <Input defaultValue="Minha Empresa LTDA" />
+            <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>E-mail</Label>
-            <Input defaultValue="contato@minhaempresa.com" />
+            <Input value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)} />
           </div>
-          <Button>Salvar</Button>
+          <Button onClick={handleSave} disabled={updateSettings.isPending}>
+            {updateSettings.isPending ? "Salvando..." : "Salvar"}
+          </Button>
         </CardContent>
       </Card>
 
@@ -45,11 +80,11 @@ export default function Configuracoes() {
           </div>
           <div className="space-y-2">
             <Label>API Key</Label>
-            <Input defaultValue="sk-demo-xxxxxxxxxxxx" type="password" />
+            <Input defaultValue={settings?.api_key || ""} type="password" />
           </div>
           <div className="space-y-2">
             <Label>Webhook URL</Label>
-            <Input defaultValue="https://api.flowai.com/webhook/whatsapp" readOnly />
+            <Input defaultValue={settings?.webhook_url || ""} readOnly />
           </div>
           <Button variant="outline">Testar Conexão</Button>
         </CardContent>

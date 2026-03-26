@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -62,11 +63,9 @@ export default function CRM() {
               onDrop={() => handleDrop(col.id)}
             >
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${col.color}`}>
-                    {col.label}
-                  </span>
-                </div>
+                <span className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${col.color}`}>
+                  {col.label}
+                </span>
                 <span className="text-xs text-muted-foreground font-medium">{colLeads.length}</span>
               </div>
 
@@ -113,5 +112,3 @@ export default function CRM() {
     </div>
   );
 }
-
-import { useState } from "react";

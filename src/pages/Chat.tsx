@@ -1,50 +1,68 @@
 import { useState } from "react";
-import { conversations as initialConvos, Conversation, Message } from "@/lib/mock-data";
+import { useConversations, useMessages, useSendMessage } from "@/hooks/use-conversations";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Send, Bot, Search, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Conversation } from "@/hooks/use-conversations";
 
 const channelIcon: Record<string, string> = { whatsapp: "🟢", instagram: "📸" };
 
 export default function Chat() {
-  const [convos] = useState<Conversation[]>(initialConvos);
-  const [selected, setSelected] = useState<Conversation | null>(convos[0]);
-  const [messages, setMessages] = useState<Message[]>(convos[0]?.messages || []);
+  const { data: convos, isLoading } = useConversations();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
 
-  const selectConvo = (c: Conversation) => {
-    setSelected(c);
-    setMessages(c.messages);
-  };
+  const selected = convos?.find((c) => c.id === selectedId) || convos?.[0] || null;
+  const { data: messages } = useMessages(selected?.id || null);
+  const sendMessage = useSendMessage();
 
-  const sendMessage = () => {
+  const selectConvo = (c: Conversation) => setSelectedId(c.id);
+
+  const handleSend = () => {
     if (!input.trim() || !selected) return;
-    const newMsg: Message = {
-      id: `m${Date.now()}`, leadId: selected.lead.id, content: input,
-      sender: "agent", channel: selected.channel, timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-    };
-    setMessages((prev) => [...prev, newMsg]);
+    const timestamp = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    sendMessage.mutate({
+      conversation_id: selected.id,
+      lead_id: selected.lead_id,
+      content: input,
+      sender: "agent",
+      channel: selected.channel,
+      timestamp,
+    });
     setInput("");
 
     // Simulated AI response
     setTimeout(() => {
-      const aiMsg: Message = {
-        id: `m${Date.now() + 1}`, leadId: selected.lead.id,
+      sendMessage.mutate({
+        conversation_id: selected.id,
+        lead_id: selected.lead_id,
         content: "Obrigado pelo contato! Vou verificar as opções disponíveis para você. 😊",
-        sender: "ai", channel: selected.channel,
+        sender: "ai",
+        channel: selected.channel,
         timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      });
     }, 1500);
   };
 
-  const filtered = convos.filter((c) =>
-    c.lead.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = (convos || []).filter((c) =>
+    c.leads.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-3.5rem)]">
+        <div className="w-80 border-r p-3 space-y-3">
+          {[1,2,3].map(i => <Skeleton key={i} className="h-16" />)}
+        </div>
+        <div className="flex-1 p-6"><Skeleton className="h-full" /></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
@@ -72,17 +90,17 @@ export default function Chat() {
             >
               <Avatar className="h-10 w-10 shrink-0">
                 <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                  {c.lead.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                  {c.leads.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm truncate">{c.lead.name}</span>
-                  <span className="text-[10px] text-muted-foreground">{c.lastMessageTime}</span>
+                  <span className="font-medium text-sm truncate">{c.leads.name}</span>
+                  <span className="text-[10px] text-muted-foreground">{c.last_message_time}</span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-xs">{channelIcon[c.channel]}</span>
-                  <span className="text-xs text-muted-foreground truncate">{c.lastMessage}</span>
+                  <span className="text-xs text-muted-foreground truncate">{c.last_message}</span>
                 </div>
               </div>
               {c.unread > 0 && (
@@ -98,24 +116,22 @@ export default function Chat() {
       {/* Área do chat */}
       {selected ? (
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
           <div className="h-14 px-4 flex items-center gap-3 border-b bg-card/50">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                {selected.lead.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                {selected.leads.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
               </AvatarFallback>
             </Avatar>
             <div>
-              <div className="font-medium text-sm">{selected.lead.name}</div>
+              <div className="font-medium text-sm">{selected.leads.name}</div>
               <div className="text-xs text-muted-foreground flex items-center gap-1">
-                {channelIcon[selected.channel]} {selected.channel === "whatsapp" ? "WhatsApp" : "Instagram"} · {selected.lead.phone}
+                {channelIcon[selected.channel]} {selected.channel === "whatsapp" ? "WhatsApp" : "Instagram"} · {selected.leads.phone}
               </div>
             </div>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
-            {messages.map((msg) => {
+            {(messages || []).map((msg) => {
               const isLead = msg.sender === "lead";
               const isAi = msg.sender === "ai";
               return (
@@ -142,17 +158,16 @@ export default function Chat() {
             })}
           </div>
 
-          {/* Input */}
           <div className="p-3 border-t bg-card/50">
             <div className="flex gap-2">
               <Input
                 placeholder="Digite sua mensagem..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
                 className="flex-1"
               />
-              <Button onClick={sendMessage} size="icon" className="shrink-0">
+              <Button onClick={handleSend} size="icon" className="shrink-0">
                 <Send className="h-4 w-4" />
               </Button>
             </div>

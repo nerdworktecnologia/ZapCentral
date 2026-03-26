@@ -1,16 +1,26 @@
-import { automationRules } from "@/lib/mock-data";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAutomationRules, useToggleRule } from "@/hooks/use-automation";
+import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Zap, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Automacao() {
-  const [rules, setRules] = useState(automationRules);
+  const { data: rules, isLoading } = useAutomationRules();
+  const toggleRule = useToggleRule();
 
-  const toggle = (id: string) => {
-    setRules((prev) => prev.map((r) => r.id === id ? { ...r, active: !r.active } : r));
+  const toggle = (id: string, currentActive: boolean) => {
+    toggleRule.mutate({ id, active: !currentActive });
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6 max-w-4xl mx-auto">
+        <Skeleton className="h-8 w-48" />
+        {[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
@@ -20,7 +30,7 @@ export default function Automacao() {
       </div>
 
       <div className="space-y-3">
-        {rules.map((rule) => (
+        {(rules || []).map((rule) => (
           <Card key={rule.id} className={`transition-all ${rule.active ? "border-primary/20" : "opacity-60"}`}>
             <CardContent className="p-5">
               <div className="flex items-center justify-between gap-4">
@@ -37,7 +47,7 @@ export default function Automacao() {
                     </div>
                   </div>
                 </div>
-                <Switch checked={rule.active} onCheckedChange={() => toggle(rule.id)} />
+                <Switch checked={rule.active} onCheckedChange={() => toggle(rule.id, rule.active)} />
               </div>
             </CardContent>
           </Card>
