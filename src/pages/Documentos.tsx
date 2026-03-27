@@ -14,8 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, CheckCircle2, Clock, Upload, Loader2 } from "lucide-react";
+import { FileText, CheckCircle2, Clock, Upload, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
+import { exportReport } from "@/lib/export-report";
 
 type DocumentStatus = "Recebido" | "Pendente" | "Parcial";
 
@@ -89,6 +90,28 @@ export default function Documentos() {
   const pendentes = requests.filter((r) => r.status === "Pendente").length;
   const taxa = Math.round((recebidos / requests.length) * 100);
 
+  function handleExport() {
+    exportReport({
+      title: "Relatório de Documentos",
+      subtitle: "Coleta de documentos via WhatsApp",
+      columns: [
+        { key: "hospede",    label: "Hóspede" },
+        { key: "whatsapp",   label: "WhatsApp" },
+        { key: "imovel",     label: "Imóvel" },
+        { key: "documentos", label: "Documentos", format: (v) => (v as string[]).join(", ") },
+        { key: "status",     label: "Status" },
+        { key: "data",       label: "Data", align: "right" },
+      ],
+      rows: requests as unknown as Record<string, unknown>[],
+      summaryRows: [
+        { label: "Total de Solicitações", value: String(requests.length) },
+        { label: "Recebidos",             value: String(recebidos) },
+        { label: "Pendentes",             value: String(pendentes) },
+        { label: "Taxa de Retorno",       value: `${taxa}%` },
+      ],
+    });
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
@@ -96,10 +119,16 @@ export default function Documentos() {
           <h1 className="text-2xl font-semibold tracking-tight">Documentos</h1>
           <p className="text-sm text-muted-foreground">Coleta de documentos via WhatsApp</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Upload className="h-4 w-4 mr-2" />
-          Solicitar Documentos
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Solicitar Documentos
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

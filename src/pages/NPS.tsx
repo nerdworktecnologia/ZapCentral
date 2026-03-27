@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, TrendingUp, Users, MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Star, TrendingUp, Users, MessageSquare, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { exportReport } from "@/lib/export-report";
 
 const npsTrendData = [
   { month: "Out", nps: 58 },
@@ -36,12 +38,42 @@ function notaLabel(nota: number): string {
   return "Detrator";
 }
 
+function handleExport() {
+  exportReport({
+    title: "Relatório NPS — Satisfação dos Hóspedes",
+    subtitle: "Net Promoter Score e avaliações recentes",
+    columns: [
+      { key: "nome",        label: "Hóspede" },
+      { key: "nota",        label: "Nota", align: "center", format: (v) => `${v}/10` },
+      { key: "classe",      label: "Classificação" },
+      { key: "comentario",  label: "Comentário" },
+      { key: "data",        label: "Data", align: "right" },
+    ],
+    rows: recentReviews.map(r => ({
+      ...r,
+      classe: notaLabel(r.nota),
+    })) as unknown as Record<string, unknown>[],
+    summaryRows: [
+      { label: "NPS Score",          value: "72" },
+      { label: "Promotores",         value: "68%" },
+      { label: "Detratores",         value: "8%" },
+      { label: "Pesquisas Enviadas", value: "124" },
+    ],
+  });
+}
+
 export default function NPS() {
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">NPS — Satisfação dos Hóspedes</h1>
-        <p className="text-muted-foreground text-sm">Acompanhe o Net Promoter Score e avaliações dos hóspedes</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">NPS — Satisfação dos Hóspedes</h1>
+          <p className="text-muted-foreground text-sm">Acompanhe o Net Promoter Score e avaliações dos hóspedes</p>
+        </div>
+        <Button variant="outline" onClick={handleExport}>
+          <Download className="h-4 w-4 mr-2" />
+          Exportar Relatório
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Wallet, TrendingUp, AlertCircle, CheckCircle2, Download } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { exportReport } from "@/lib/export-report";
 
 type PaymentStatus = "Pago" | "Pendente" | "Processando";
 type PaymentType = "Reserva" | "Repasse";
@@ -17,22 +19,22 @@ interface Payment {
 }
 
 const payments: Payment[] = [
-  { id: 1, hospede: "Ana Lima", imovel: "Apto 302 — Copacabana", valor: 4800, tipo: "Reserva", status: "Pago", data: "24/03/2026" },
-  { id: 2, hospede: "Carlos Mendes", imovel: "Casa Praia — Búzios", valor: 3200, tipo: "Repasse", status: "Pago", data: "23/03/2026" },
-  { id: 3, hospede: "Beatriz Souza", imovel: "Studio 101 — Ipanema", valor: 2100, tipo: "Reserva", status: "Processando", data: "22/03/2026" },
-  { id: 4, hospede: "Rafael Torres", imovel: "Apto 501 — Barra", valor: 5600, tipo: "Reserva", status: "Pendente", data: "21/03/2026" },
-  { id: 5, hospede: "Fernanda Costa", imovel: "Cobertura — Leblon", valor: 9800, tipo: "Repasse", status: "Pago", data: "20/03/2026" },
-  { id: 6, hospede: "João Pereira", imovel: "Chalé — Serra Gaúcha", valor: 1850, tipo: "Reserva", status: "Pago", data: "19/03/2026" },
-  { id: 7, hospede: "Mariana Alves", imovel: "Apto 204 — Floripa", valor: 3400, tipo: "Repasse", status: "Processando", data: "18/03/2026" },
-  { id: 8, hospede: "Pedro Nunes", imovel: "Casa 7 — Gramado", valor: 2750, tipo: "Reserva", status: "Pendente", data: "17/03/2026" },
-  { id: 9, hospede: "Luciana Rocha", imovel: "Studio 03 — Arraial", valor: 1920, tipo: "Repasse", status: "Pago", data: "16/03/2026" },
-  { id: 10, hospede: "Thiago Barbosa", imovel: "Apto 810 — Fortaleza", valor: 4200, tipo: "Reserva", status: "Pago", data: "15/03/2026" },
+  { id: 1,  hospede: "Ana Lima",        imovel: "Apto 302 — Copacabana",  valor: 4800, tipo: "Reserva", status: "Pago",        data: "24/03/2026" },
+  { id: 2,  hospede: "Carlos Mendes",   imovel: "Casa Praia — Búzios",    valor: 3200, tipo: "Repasse", status: "Pago",        data: "23/03/2026" },
+  { id: 3,  hospede: "Beatriz Souza",   imovel: "Studio 101 — Ipanema",   valor: 2100, tipo: "Reserva", status: "Processando", data: "22/03/2026" },
+  { id: 4,  hospede: "Rafael Torres",   imovel: "Apto 501 — Barra",       valor: 5600, tipo: "Reserva", status: "Pendente",    data: "21/03/2026" },
+  { id: 5,  hospede: "Fernanda Costa",  imovel: "Cobertura — Leblon",     valor: 9800, tipo: "Repasse", status: "Pago",        data: "20/03/2026" },
+  { id: 6,  hospede: "João Pereira",    imovel: "Chalé — Serra Gaúcha",   valor: 1850, tipo: "Reserva", status: "Pago",        data: "19/03/2026" },
+  { id: 7,  hospede: "Mariana Alves",   imovel: "Apto 204 — Floripa",     valor: 3400, tipo: "Repasse", status: "Processando", data: "18/03/2026" },
+  { id: 8,  hospede: "Pedro Nunes",     imovel: "Casa 7 — Gramado",       valor: 2750, tipo: "Reserva", status: "Pendente",    data: "17/03/2026" },
+  { id: 9,  hospede: "Luciana Rocha",   imovel: "Studio 03 — Arraial",    valor: 1920, tipo: "Repasse", status: "Pago",        data: "16/03/2026" },
+  { id: 10, hospede: "Thiago Barbosa",  imovel: "Apto 810 — Fortaleza",   valor: 4200, tipo: "Reserva", status: "Pago",        data: "15/03/2026" },
 ];
 
 const statusStyles: Record<PaymentStatus, string> = {
-  Pago: "bg-success/10 text-success border-success/20",
+  Pago:        "bg-success/10 text-success border-success/20",
   Processando: "bg-warning/10 text-warning border-warning/20",
-  Pendente: "bg-destructive/10 text-destructive border-destructive/20",
+  Pendente:    "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 const tipoStyles: Record<PaymentType, string> = {
@@ -40,12 +42,43 @@ const tipoStyles: Record<PaymentType, string> = {
   Repasse: "bg-info/10 text-info border-info/20",
 };
 
+function handleExport() {
+  const totalPago    = payments.filter(p => p.status === "Pago").reduce((s, p) => s + p.valor, 0);
+  const totalPendente = payments.filter(p => p.status !== "Pago").reduce((s, p) => s + p.valor, 0);
+  const totalGeral   = payments.reduce((s, p) => s + p.valor, 0);
+
+  exportReport({
+    title: "Relatório de Pagamentos",
+    subtitle: "Lançamentos recentes — gestão e repasses",
+    columns: [
+      { key: "hospede", label: "Hóspede" },
+      { key: "imovel",  label: "Imóvel" },
+      { key: "tipo",    label: "Tipo" },
+      { key: "valor",   label: "Valor",  align: "right", format: (v) => `R$ ${Number(v).toLocaleString("pt-BR")}` },
+      { key: "status",  label: "Status" },
+      { key: "data",    label: "Data",   align: "right" },
+    ],
+    rows: payments as unknown as Record<string, unknown>[],
+    summaryRows: [
+      { label: "Total Geral",   value: `R$ ${totalGeral.toLocaleString("pt-BR")}` },
+      { label: "Total Pago",    value: `R$ ${totalPago.toLocaleString("pt-BR")}` },
+      { label: "Total Pendente", value: `R$ ${totalPendente.toLocaleString("pt-BR")}` },
+    ],
+  });
+}
+
 export default function Pagamentos() {
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">Pagamentos — Gestão e Repasses</h1>
-        <p className="text-muted-foreground text-sm">Acompanhe recebimentos, repasses e inadimplências</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Pagamentos</h1>
+          <p className="text-muted-foreground text-sm">Acompanhe recebimentos, repasses e inadimplências</p>
+        </div>
+        <Button variant="outline" onClick={handleExport}>
+          <Download className="h-4 w-4 mr-2" />
+          Exportar Relatório
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -123,18 +156,12 @@ export default function Pagamentos() {
                 <TableRow key={payment.id} className="hover:bg-muted/30">
                   <TableCell className="font-medium">{payment.hospede}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{payment.imovel}</TableCell>
-                  <TableCell className="font-semibold">
-                    R$ {payment.valor.toLocaleString("pt-BR")}
+                  <TableCell className="font-semibold">R$ {payment.valor.toLocaleString("pt-BR")}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-[10px] ${tipoStyles[payment.tipo]}`}>{payment.tipo}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={`text-[10px] ${tipoStyles[payment.tipo]}`}>
-                      {payment.tipo}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`text-[10px] ${statusStyles[payment.status]}`}>
-                      {payment.status}
-                    </Badge>
+                    <Badge variant="outline" className={`text-[10px] ${statusStyles[payment.status]}`}>{payment.status}</Badge>
                   </TableCell>
                   <TableCell className="text-right text-sm text-muted-foreground">{payment.data}</TableCell>
                 </TableRow>
