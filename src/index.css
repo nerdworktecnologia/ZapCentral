@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
 
-    --primary: 243 75% 59%;
+    --primary: 142 76% 36%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 5% 96%;
@@ -41,21 +41,21 @@
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 243 75% 59%;
+    --ring: 142 76% 36%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 224 71% 4%;
-    --sidebar-primary: 243 75% 59%;
+    --sidebar-primary: 142 76% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 5% 96%;
     --sidebar-accent-foreground: 224 71% 4%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 243 75% 59%;
+    --sidebar-ring: 142 76% 36%;
 
-    --chart-1: 243 75% 59%;
-    --chart-2: 142 71% 45%;
+    --chart-1: 142 76% 36%;
+    --chart-2: 160 84% 34%;
     --chart-3: 38 92% 50%;
     --chart-4: 199 89% 48%;
     --chart-5: 0 84% 60%;
@@ -71,7 +71,7 @@
     --popover: 225 50% 8%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 243 75% 59%;
+    --primary: 142 71% 45%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 225 30% 14%;
@@ -97,19 +97,19 @@
 
     --border: 225 30% 16%;
     --input: 225 30% 16%;
-    --ring: 243 75% 59%;
+    --ring: 142 71% 45%;
 
     --sidebar-background: 225 50% 6%;
     --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 243 75% 59%;
+    --sidebar-primary: 142 71% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 225 30% 12%;
     --sidebar-accent-foreground: 210 20% 98%;
     --sidebar-border: 225 30% 14%;
-    --sidebar-ring: 243 75% 59%;
+    --sidebar-ring: 142 71% 45%;
 
-    --chart-1: 243 75% 65%;
-    --chart-2: 142 71% 55%;
+    --chart-1: 142 71% 55%;
+    --chart-2: 160 84% 44%;
     --chart-3: 38 92% 60%;
     --chart-4: 199 89% 58%;
     --chart-5: 0 84% 65%;
@@ -121,13 +121,29 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 @layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted)) transparent;
