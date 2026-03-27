@@ -3,10 +3,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Webhook, Users } from "lucide-react";
+import { Building2, Webhook, Users, ImagePlus, Trash2 } from "lucide-react";
 import { useSettings, useUpdateSettings } from "@/hooks/use-settings";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 export default function Configuracoes() {
@@ -14,13 +14,41 @@ export default function Configuracoes() {
   const updateSettings = useUpdateSettings();
   const [companyName, setCompanyName] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (settings) {
       setCompanyName(settings.company_name);
       setCompanyEmail(settings.company_email);
     }
+    const saved = localStorage.getItem("company_logo");
+    if (saved) setLogoUrl(saved);
   }, [settings]);
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Máximo 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setLogoUrl(result);
+      localStorage.setItem("company_logo", result);
+      toast.success("Logo atualizada!");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleRemoveLogo() {
+    setLogoUrl(null);
+    localStorage.removeItem("company_logo");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    toast.success("Logo removida.");
+  }
 
   const handleSave = () => {
     if (!settings) return;
@@ -45,6 +73,48 @@ export default function Configuracoes() {
         <h1 className="text-2xl font-bold">Configurações</h1>
         <p className="text-muted-foreground text-sm">Gerencie as configurações do sistema</p>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <ImagePlus className="h-4 w-4 text-primary" /> Logo da Empresa
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-5">
+            <div className="h-20 w-20 rounded-xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
+              ) : (
+                <ImagePlus className="h-7 w-7 text-muted-foreground" />
+              )}
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                PNG, JPG ou SVG. Máximo 2MB.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  {logoUrl ? "Trocar logo" : "Fazer upload"}
+                </Button>
+                {logoUrl && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={handleRemoveLogo}>
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoChange}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-3">

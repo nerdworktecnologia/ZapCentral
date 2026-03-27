@@ -9,6 +9,18 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+
+function useLogo() {
+  const [logo, setLogo] = useState<string | null>(null);
+  useEffect(() => {
+    setLogo(localStorage.getItem("company_logo"));
+    const handler = () => setLogo(localStorage.getItem("company_logo"));
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+  return logo;
+}
 
 const navItems = [
   { title: "Dashboard", url: "/app", icon: LayoutDashboard },
@@ -29,12 +41,17 @@ export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const logo = useLogo();
 
   return (
     <Sidebar collapsible="icon">
       <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shrink-0">
-          Z
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shrink-0 overflow-hidden">
+          {logo ? (
+            <img src={logo} alt="Logo" className="h-full w-full object-contain" />
+          ) : (
+            "Z"
+          )}
         </div>
         {!collapsed && (
           <span className="font-bold text-lg tracking-tight text-sidebar-foreground">
