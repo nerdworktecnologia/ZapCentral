@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# IDE/tool directories
+.trae/
+.claude/
+
 # Environment variables (never commit secrets)
 .env
 .env.*
