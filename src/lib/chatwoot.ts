@@ -2,13 +2,27 @@ const CW_URL = (import.meta.env.VITE_CHATWOOT_URL as string) ?? "https://chat.ie
 const CW_TOKEN = (import.meta.env.VITE_CHATWOOT_TOKEN as string) ?? "ZtgDLEF4TtVzqX1R55TcGSC2";
 const CW_ACCOUNT = (import.meta.env.VITE_CHATWOOT_ACCOUNT as string) ?? "1";
 
-const headers = { api_access_token: CW_TOKEN };
+// Use serverless proxy in production to avoid CORS; direct in dev
+const USE_PROXY = typeof window !== "undefined" && !window.location.hostname.includes("localhost");
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${CW_URL}/api/v1/accounts/${CW_ACCOUNT}${path}`, {
-    headers,
-    ...options,
-  });
+  let url: string;
+  let fetchOptions: RequestInit;
+
+  if (USE_PROXY) {
+    // Strip leading slash and pass as query param to /api/chatwoot
+    const stripped = path.replace(/^\//, "");
+    const [base, qs] = stripped.split("?");
+    const params = new URLSearchParams(qs ?? "");
+    params.set("path", base);
+    url = `/api/chatwoot?${params.toString()}`;
+    fetchOptions = { ...options, headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) } };
+  } else {
+    url = `${CW_URL}/api/v1/accounts/${CW_ACCOUNT}${path}`;
+    fetchOptions = { headers: { api_access_token: CW_TOKEN }, ...options };
+  }
+
+  const res = await fetch(url, fetchOptions);
   if (!res.ok) throw new Error(`Chatwoot API error: ${res.status}`);
   return res.json();
 }
