@@ -1,6 +1,11 @@
 {
-  "rewrites": [
-    { "source": "/app/:path*", "destination": "/index.html" },
-    { "source": "/", "destination": "/index.html" }
+  "functions": {
+    "api/chatwoot.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    { "src": "/api/chatwoot(.*)", "dest": "/api/chatwoot.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
