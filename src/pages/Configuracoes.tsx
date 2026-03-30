@@ -36,7 +36,7 @@ import { checkEvolutionConnection, EVOLUTION_URL, type EvolutionStatus } from "@
 
 const N8N_WEBHOOK_DEFAULT =
   (import.meta.env.VITE_N8N_WEBHOOK_URL as string) ??
-  "https://hook.ieneassessoria.com.br/webhook/Iene_webhook";
+  "https://hook.ieneassessoria.com.br/webhook/iene_teste";
 const EVOLUTION_API_KEY_DEFAULT =
   (import.meta.env.VITE_EVOLUTION_API_KEY as string) ?? "";
 
