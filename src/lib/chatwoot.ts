@@ -88,4 +88,16 @@ export const chatwoot = {
       body: JSON.stringify({ status }),
     });
   },
+
+  async sendMessage(conversationId: number, content: string): Promise<CWMessage> {
+    const data = await request<{ id: number; content: string; message_type: number; created_at: number; sender?: { name: string } }>(
+      `/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ content, message_type: "outgoing", private: false }),
+      },
+    );
+    return data as CWMessage;
+  },
 };

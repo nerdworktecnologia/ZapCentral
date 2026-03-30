@@ -32,6 +32,23 @@ import {
   roleLabels, rolePermissions, roleColors,
   type TeamRole, type TeamMember,
 } from "@/hooks/use-team";
+import { checkEvolutionConnection, EVOLUTION_URL, type EvolutionStatus } from "@/lib/evolution";
+
+const N8N_WEBHOOK_DEFAULT =
+  (import.meta.env.VITE_N8N_WEBHOOK_URL as string) ??
+  "https://automacao.ieneassessoria.com.br/webhook/Iene_webhook";
+const EVOLUTION_API_KEY_DEFAULT =
+  (import.meta.env.VITE_EVOLUTION_API_KEY as string) ?? "";
+
+function ConnectionDot({ status }: { status: EvolutionStatus }) {
+  if (status === "idle") return null;
+  const cls: Record<Exclude<EvolutionStatus, "idle">, string> = {
+    connecting: "bg-orange-400 animate-pulse",
+    connected: "bg-green-500",
+    error: "bg-red-500",
+  };
+  return <span className={`h-2.5 w-2.5 rounded-full inline-block shrink-0 ${cls[status]}`} />;
+}
 
 const memberSchema = z.object({
   name: z.string().min(2, "Informe o nome"),
@@ -47,6 +64,12 @@ export default function Configuracoes() {
   const updateSettings = useUpdateSettings();
   const [companyName, setCompanyName] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
+
+  // API WhatsApp (Evolution + n8n webhook)
+  const [apiKey, setApiKey] = useState(EVOLUTION_API_KEY_DEFAULT);
+  const [webhookUrl, setWebhookUrl] = useState(N8N_WEBHOOK_DEFAULT);
+  const [connStatus, setConnStatus] = useState<EvolutionStatus>("idle");
+  const [connError, setConnError] = useState("");
 
   // Logo
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -71,10 +94,31 @@ export default function Configuracoes() {
     if (settings) {
       setCompanyName(settings.company_name);
       setCompanyEmail(settings.company_email);
+      if (settings.api_key) setApiKey(settings.api_key);
+      // Migrate away from old flowai URL to n8n webhook
+      const storedUrl = settings.webhook_url ?? "";
+      const isOldUrl = !storedUrl || storedUrl.includes("flowai.com");
+      setWebhookUrl(isOldUrl ? N8N_WEBHOOK_DEFAULT : storedUrl);
     }
     const saved = localStorage.getItem("company_logo");
     if (saved) setLogoUrl(saved);
   }, [settings]);
+
+  async function handleTestConnection() {
+    setConnStatus("connecting");
+    setConnError("");
+    const result = await checkEvolutionConnection(EVOLUTION_URL, apiKey);
+    setConnStatus(result.status);
+    if (result.status === "error") setConnError(result.error ?? "Falha ao conectar.");
+    else if (result.status === "connected")
+      toast.success(`Conectado${result.instanceName ? ` — ${result.instanceName}` : ""}!`);
+  }
+
+  async function handleSaveApiSettings() {
+    if (!settings) return;
+    await updateSettings.mutateAsync({ id: settings.id, api_key: apiKey, webhook_url: webhookUrl });
+    toast.success("Configurações salvas!");
+  }
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -228,14 +272,40 @@ export default function Configuracoes() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>API Key</Label>
-            <Input defaultValue={settings?.api_key || ""} type="password" />
+            <Label>Evolution API URL</Label>
+            <Input value={EVOLUTION_URL} readOnly className="bg-muted/40 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <Label>Webhook URL</Label>
-            <Input defaultValue={settings?.webhook_url || ""} readOnly />
+            <Label>API Key</Label>
+            <Input
+              value={apiKey}
+              onChange={(e) => { setApiKey(e.target.value); setConnStatus("idle"); }}
+              type="password"
+            />
           </div>
-          <Button variant="outline">Testar Conexão</Button>
+          <div className="space-y-2">
+            <Label>Webhook URL (n8n)</Label>
+            <Input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} />
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button variant="outline" onClick={handleTestConnection} disabled={connStatus === "connecting"}>
+              {connStatus === "connecting" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Testar Conexão
+            </Button>
+            <ConnectionDot status={connStatus} />
+            {connStatus === "connected" && (
+              <span className="text-sm text-green-600 font-medium">Conectado</span>
+            )}
+            {connStatus === "connecting" && (
+              <span className="text-sm text-orange-500 font-medium">Conectando…</span>
+            )}
+            {connStatus === "error" && (
+              <span className="text-sm text-destructive font-medium">{connError}</span>
+            )}
+          </div>
+          <Button onClick={handleSaveApiSettings} disabled={updateSettings.isPending}>
+            {updateSettings.isPending ? "Salvando..." : "Salvar"}
+          </Button>
         </CardContent>
       </Card>
 

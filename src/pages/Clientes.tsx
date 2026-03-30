@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Phone, Mail, Loader2, ExternalLink } from "lucide-react";
+import { Search, Phone, Mail, ExternalLink, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,9 +23,10 @@ export default function Clientes() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["cw-contacts", debouncedSearch],
     queryFn: () => chatwoot.getContacts(1, debouncedSearch),
+    retry: 1,
   });
 
   function handleSearch(value: string) {
@@ -66,6 +67,17 @@ export default function Clientes() {
           className="pl-9"
         />
       </div>
+
+      {isError && (
+        <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">Erro ao carregar contatos do Chatwoot</p>
+            <p className="text-muted-foreground mt-0.5">{(error as Error)?.message ?? "Verifique se o token e a URL do Chatwoot estão corretos nas configurações."}</p>
+            <p className="text-muted-foreground mt-1 text-xs">Possível causa: CORS bloqueando requisição de localhost. Em produção isso será resolvido automaticamente.</p>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
