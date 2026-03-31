@@ -1,0 +1,718 @@
+{
+  "name": "ZapCentral - Aluguel por Temporada (Airbnb + Booking + WhatsApp + IA)",
+  "nodes": [
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "iene_teste",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-main",
+      "name": "📱 WhatsApp Webhook (Evolution)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 460],
+      "webhookId": "iene-teste-main"
+    },
+
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
+      "id": "node-respond-ok",
+      "name": "✅ Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [440, 320]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─── Extrair e validar mensagem do Evolution API ───\nconst body = $input.first().json;\n\n// Ignorar mensagens enviadas pelo próprio bot\nif (body?.data?.key?.fromMe === true) {\n  return [];\n}\n\n// Ignorar mensagens de grupos\nconst remoteJid = body?.data?.key?.remoteJid || '';\nif (remoteJid.includes('@g.us')) {\n  return [];\n}\n\n// Ignorar eventos que não sejam mensagens\nconst event = body?.event || '';\nif (!event.includes('messages')) {\n  return [];\n}\n\n// Extrair dados da mensagem\nconst phone = remoteJid.replace('@s.whatsapp.net', '');\nconst pushName = body?.data?.pushName || 'Hóspede';\n\nconst message =\n  body?.data?.message?.conversation ||\n  body?.data?.message?.extendedTextMessage?.text ||\n  body?.data?.message?.imageMessage?.caption ||\n  body?.data?.message?.documentMessage?.caption ||\n  '';\n\nconst hasMedia =\n  !!body?.data?.message?.imageMessage ||\n  !!body?.data?.message?.documentMessage;\n\nconst mediaType = body?.data?.message?.imageMessage\n  ? 'image'\n  : body?.data?.message?.documentMessage\n  ? 'document'\n  : null;\n\nif (!phone) return [];\n\nreturn [{\n  json: {\n    phone,\n    pushName,\n    message,\n    remoteJid,\n    hasMedia,\n    mediaType,\n    instanceName: body?.instance || 'Iene-teste',\n    rawEvent: event\n  }\n}];"
+      },
+      "id": "node-extract-data",
+      "name": "🔍 Extrair Dados da Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 460]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$credentials.openAiApiKey}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "model": "gpt-4o-mini",
+          "temperature": 0.7,
+          "max_tokens": 500,
+          "messages": [
+            {
+              "role": "system",
+              "content": "Você é a IA de atendimento de um serviço de aluguel por temporada (Airbnb e Booking.com). Seu nome é ZapBot. Responda sempre em português brasileiro, de forma calorosa, profissional e concisa. Use emojis com moderação.\n\nSua primeira tarefa é classificar a INTENÇÃO da mensagem do hóspede em uma dessas categorias:\n- nova_reserva: hóspede acabou de reservar e está entrando em contato pela primeira vez\n- docs_enviados: hóspede enviou documentos (RG, CPF, foto)\n- checkin_duvida: hóspede pergunta sobre check-in, endereço, chave, código ou horário de entrada\n- checkout_duvida: hóspede pergunta sobre check-out, horário de saída, deixar chave\n- pagamento: hóspede pergunta sobre pagamento, boleto, Pix, valor, saldo\n- manutencao: hóspede relata problema no imóvel (ar, chuveiro, TV, wifi, etc.)\n- nps_resposta: hóspede respondeu à pesquisa de satisfação\n- duvida_geral: qualquer outra pergunta ou mensagem\n\nDepois de classificar, gere UMA resposta apropriada para a mensagem.\n\nRetorne APENAS um JSON válido nesse formato:\n{\n  \"intencao\": \"<categoria>\",\n  \"resposta\": \"<texto da resposta para o hóspede>\"\n}"
+            },
+            {
+              "role": "user",
+              "content": "=Nome do hóspede: {{$json.pushName}}\nMídia recebida: {{$json.hasMedia}}\nTipo de mídia: {{$json.mediaType}}\nMensagem: {{$json.message}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-openai-intent",
+      "name": "🤖 IA - Detectar Intenção e Gerar Resposta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 460]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Parsear resposta da OpenAI\nconst aiResponse = $input.first().json;\nconst rawContent = aiResponse?.choices?.[0]?.message?.content || '{}';\n\nlet parsed = { intencao: 'duvida_geral', resposta: 'Olá! Como posso ajudar? 😊' };\ntry {\n  // Remover blocos de markdown se existirem\n  const cleaned = rawContent.replace(/```json\\n?/g, '').replace(/```/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  console.log('Erro ao parsear JSON da IA:', e.message);\n}\n\n// Pegar dados da mensagem original do item anterior (passados via $('Extrair Dados da Mensagem'))\nconst msgData = $('🔍 Extrair Dados da Mensagem').first().json;\n\nreturn [{\n  json: {\n    ...msgData,\n    intencao: parsed.intencao || 'duvida_geral',\n    respostaIA: parsed.resposta || 'Olá! Como posso ajudar? 😊'\n  }\n}];"
+      },
+      "id": "node-parse-ai",
+      "name": "📋 Parsear Resposta da IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 460]
+    },
+
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.intencao}}",
+                    "rightValue": "nova_reserva",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "nova_reserva"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.intencao}}",
+                    "rightValue": "docs_enviados",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "docs_enviados"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.intencao}}",
+                    "rightValue": "checkin_duvida",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "checkin_duvida"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.intencao}}",
+                    "rightValue": "manutencao",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "manutencao"
+            }
+          ]
+        },
+        "fallbackOutput": "extra"
+      },
+      "id": "node-switch-intent",
+      "name": "🔀 Roteador por Intenção",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1160, 460]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Mensagem de boas-vindas para nova reserva\nconst { pushName, phone } = $json;\nconst texto = `Olá, ${pushName}! 🏠 Seja muito bem-vindo(a)!\\n\\nSua reserva foi confirmada com sucesso. Estou aqui para garantir a melhor estadia possível.\\n\\nPara finalizar seu cadastro e liberar o acesso ao imóvel, preciso de alguns documentos:\\n\\n📋 *Envie por aqui:*\\n• Foto do RG ou CNH (frente e verso)\\n• Foto segurando o documento (selfie)\\n\\nAssim que receber, confirmarei tudo e um dia antes do check-in te mando o endereço completo e o código da fechadura. 🔑\\n\\nQualquer dúvida, pode chamar! 😊`;\n\nreturn [{ json: { ...$json, mensagemFinal: texto } }];"
+      },
+      "id": "node-msg-nova-reserva",
+      "name": "📝 Montar: Boas-vindas + Solicitar Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 240]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Confirmação de recebimento de documentos\nconst { pushName } = $json;\nconst texto = `✅ Perfeito, ${pushName}! Documentos recebidos com sucesso!\\n\\nVou verificar tudo e em breve confirmo seu cadastro.\\n\\nUm dia antes do seu check-in vou te enviar:\\n🏠 Endereço completo\\n🔑 Código da fechadura\\n🕐 Horário de entrada\\nℹ️ Regras e dicas do imóvel\\n\\nQualquer dúvida, pode chamar! 😊`;\n\nreturn [{ json: { ...$json, mensagemFinal: texto } }];"
+      },
+      "id": "node-msg-docs-ok",
+      "name": "📝 Montar: Confirmar Documentos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 380]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Instruções de check-in (quando hóspede pergunta)\n// ⚠️ EDITE os dados do seu imóvel abaixo\nconst { pushName } = $json;\n\nconst ENDERECO = 'Rua Exemplo, 123, Apto 301 - Bairro, Cidade - CEP 00000-000';\nconst CODIGO_FECHADURA = '1234#';\nconst HORARIO_CHECKIN = '15h00';\nconst HORARIO_CHECKOUT = '11h00';\nconst WIFI_NOME = 'ZapCentral_Guest';\nconst WIFI_SENHA = 'zapcentral2024';\n\nconst texto = `Olá, ${pushName}! Aqui estão todas as informações de check-in: 🏠\\n\\n📍 *Endereço:*\\n${ENDERECO}\\n\\n🔑 *Código da fechadura:*\\n${CODIGO_FECHADURA}\\n\\n🕐 *Horários:*\\n• Check-in: a partir das ${HORARIO_CHECKIN}\\n• Check-out: até ${HORARIO_CHECKOUT}\\n\\n📶 *Wi-Fi:*\\nRede: ${WIFI_NOME}\\nSenha: ${WIFI_SENHA}\\n\\n⚠️ *Regras importantes:*\\n• Não é permitido fumar no imóvel\\n• Número máximo de hóspedes conforme reserva\\n• Em caso de problemas, me avise imediatamente\\n\\nBoa estadia! 🌟 Qualquer dúvida, estou aqui!`;\n\nreturn [{ json: { ...$json, mensagemFinal: texto } }];"
+      },
+      "id": "node-msg-checkin",
+      "name": "📝 Montar: Instruções Check-in",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 520]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Alerta de manutenção para o gestor\n// ⚠️ EDITE o número do gestor abaixo\nconst { pushName, message, phone } = $json;\n\nconst NUMERO_GESTOR = '5511999999999'; // ← COLOQUE SEU NÚMERO AQUI\n\nconst textoHospede = `Olá, ${pushName}! Recebi seu relato e já acionei o suporte. 🔧\\n\\nNosso responsável entrará em contato em breve para resolver o problema.\\nLamentamos o inconveniente e agradecemos a compreensão! 🙏`;\n\nconst textoGestor = `⚠️ *MANUTENÇÃO SOLICITADA*\\n\\nHóspede: ${pushName}\\nTelefone: ${phone}\\nRelato: ${message}\\n\\nPor favor, entre em contato com o hóspede para resolver.`;\n\nreturn [\n  { json: { ...$json, mensagemFinal: textoHospede, phoneGestor: NUMERO_GESTOR, mensagemGestor: textoGestor } }\n];"
+      },
+      "id": "node-msg-manutencao",
+      "name": "📝 Montar: Alerta Manutenção",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 660]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Resposta genérica da IA para outras intenções\nreturn [{ json: { ...$json, mensagemFinal: $json.respostaIA } }];"
+      },
+      "id": "node-msg-generica",
+      "name": "📝 Montar: Resposta IA Genérica",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 800]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution.ieneassessoria.com.br/message/sendText/{{$json.instanceName}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$credentials.evolutionApiKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "number": "={{$json.phone}}",
+          "text": "={{$json.mensagemFinal}}"
+        },
+        "options": {}
+      },
+      "id": "node-send-whatsapp-main",
+      "name": "📤 Enviar WhatsApp (Evolution API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 460]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution.ieneassessoria.com.br/message/sendText/{{$json.instanceName}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$credentials.evolutionApiKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "number": "={{$json.phoneGestor}}",
+          "text": "={{$json.mensagemGestor}}"
+        },
+        "options": {}
+      },
+      "id": "node-send-whatsapp-gestor",
+      "name": "📤 Alertar Gestor (Manutenção)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 660]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://chat.ieneassessoria.com.br/api/v1/accounts/1/contacts/search?q={{$json.phone}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api_access_token", "value": "ZtgDLEF4TtVzqX1R55TcGSC2" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-chatwoot-search",
+      "name": "🔍 Chatwoot: Buscar Contato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1880, 460]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Verificar se contato existe no Chatwoot\nconst result = $input.first().json;\nconst msgData = $('📋 Parsear Resposta da IA').first().json;\n\nconst contacts = result?.payload || [];\nconst existing = contacts.find(c =>\n  c.phone_number && c.phone_number.replace(/\\D/g, '').endsWith(msgData.phone.slice(-8))\n);\n\nreturn [{\n  json: {\n    ...msgData,\n    chatwootContactId: existing?.id || null,\n    contactExists: !!existing\n  }\n}];"
+      },
+      "id": "node-check-contact",
+      "name": "🔀 Contato existe no Chatwoot?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2120, 460]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "leftValue": "={{$json.contactExists}}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "node-if-contact",
+      "name": "❓ Contato já existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2360, 460]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.ieneassessoria.com.br/api/v1/accounts/1/contacts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api_access_token", "value": "ZtgDLEF4TtVzqX1R55TcGSC2" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "name": "={{$json.pushName}}",
+          "phone_number": "=+{{$json.phone}}"
+        },
+        "options": {}
+      },
+      "id": "node-chatwoot-create-contact",
+      "name": "➕ Chatwoot: Criar Contato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2600, 560]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Consolidar contact_id (de contato existente ou recém-criado)\nconst input = $input.first().json;\n\n// Se veio do \"Criar Contato\", pega o ID da resposta\nif (input?.id) {\n  const msgData = $('❓ Contato já existe?').first().json;\n  return [{ json: { ...msgData, chatwootContactId: input.id } }];\n}\n\n// Se veio do IF (contato já existia)\nreturn [{ json: input }];"
+      },
+      "id": "node-merge-contact",
+      "name": "🔗 Consolidar Contact ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2840, 460]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.ieneassessoria.com.br/api/v1/accounts/1/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api_access_token", "value": "ZtgDLEF4TtVzqX1R55TcGSC2" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "contact_id": "={{$json.chatwootContactId}}",
+          "inbox_id": 1,
+          "additional_attributes": {
+            "origem": "whatsapp",
+            "intencao": "={{$json.intencao}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-chatwoot-conversation",
+      "name": "💬 Chatwoot: Criar Conversa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3080, 460]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://chat.ieneassessoria.com.br/api/v1/accounts/1/conversations/{{$json.id}}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api_access_token", "value": "ZtgDLEF4TtVzqX1R55TcGSC2" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "content": "=🤖 IA respondeu:\n{{$('📋 Parsear Resposta da IA').first().json.mensagemFinal}}",
+          "message_type": "outgoing",
+          "private": false
+        },
+        "options": {}
+      },
+      "id": "node-chatwoot-message",
+      "name": "📩 Chatwoot: Registrar Mensagem",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 460]
+    },
+
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-schedule-checkin",
+      "name": "⏰ Agendamento: 10h - Lembrete Check-in",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 980]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://zvmhoadlhyboyvlqwszi.supabase.co/rest/v1/leads?select=*&status=eq.atendimento",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$credentials.supabaseAnonKey}}" },
+            { "name": "Authorization", "value": "=Bearer {{$credentials.supabaseAnonKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-supabase-checkins",
+      "name": "🗄️ Supabase: Buscar Check-ins Amanhã",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 980]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Filtrar hóspedes com check-in amanhã\n// ⚠️ Requer coluna 'checkin_date' (DATE) na tabela leads\nconst leads = $input.first().json;\n\nconst amanha = new Date();\namanha.setDate(amanha.getDate() + 1);\nconst dataAmanha = amanha.toISOString().split('T')[0]; // YYYY-MM-DD\n\nif (!Array.isArray(leads)) return [];\n\nconst hospedesAmanha = leads.filter(l => l.checkin_date === dataAmanha);\n\nreturn hospedesAmanha.map(hospede => ({\n  json: {\n    phone: hospede.phone?.replace(/\\D/g, '') || '',\n    pushName: hospede.name || 'Hóspede',\n    instanceName: 'Iene-teste',\n    // ⚠️ EDITE os dados do imóvel abaixo\n    mensagemFinal:\n      `Olá, ${hospede.name}! 🌟 Seu check-in é *amanhã*! Aqui estão as informações de acesso:\\n\\n` +\n      `📍 *Endereço:* Rua Exemplo, 123, Apto 301 - Cidade\\n` +\n      `🔑 *Código da fechadura:* 1234#\\n` +\n      `🕐 *Horário de entrada:* a partir das 15h00\\n` +\n      `🕙 *Horário de saída:* até 11h00\\n` +\n      `📶 *Wi-Fi:* ZapCentral_Guest | Senha: zapcentral2024\\n\\n` +\n      `Qualquer dúvida, pode chamar! Boa estadia! 🏠✨`\n  }\n}));"
+      },
+      "id": "node-filter-checkins",
+      "name": "🔍 Filtrar Check-ins de Amanhã",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 980]
+    },
+
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "node-split-checkins",
+      "name": "🔁 Loop: Check-ins",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [920, 980]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution.ieneassessoria.com.br/message/sendText/{{$json.instanceName}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$credentials.evolutionApiKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "number": "={{$json.phone}}",
+          "text": "={{$json.mensagemFinal}}"
+        },
+        "options": {}
+      },
+      "id": "node-send-checkin-reminder",
+      "name": "📤 Enviar Lembrete Check-in",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 980]
+    },
+
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 12 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-schedule-nps",
+      "name": "⏰ Agendamento: 12h - NPS Pós-Checkout",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 1200]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://zvmhoadlhyboyvlqwszi.supabase.co/rest/v1/leads?select=*&status=eq.fechado",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$credentials.supabaseAnonKey}}" },
+            { "name": "Authorization", "value": "=Bearer {{$credentials.supabaseAnonKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-supabase-checkouts",
+      "name": "🗄️ Supabase: Buscar Checkouts de Hoje",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 1200]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Filtrar hóspedes com checkout hoje\n// ⚠️ Requer coluna 'checkout_date' (DATE) na tabela leads\nconst leads = $input.first().json;\n\nconst hoje = new Date().toISOString().split('T')[0]; // YYYY-MM-DD\n\nif (!Array.isArray(leads)) return [];\n\nconst hospedesHoje = leads.filter(l => l.checkout_date === hoje);\n\nreturn hospedesHoje.map(hospede => ({\n  json: {\n    phone: hospede.phone?.replace(/\\D/g, '') || '',\n    pushName: hospede.name || 'Hóspede',\n    instanceName: 'Iene-teste',\n    mensagemFinal:\n      `Olá, ${hospede.name}! 😊 Esperamos que sua estadia tenha sido incrível!\\n\\n` +\n      `Gostaríamos muito de saber sua opinião:\\n\\n` +\n      `⭐ *Numa escala de 0 a 10, quanto você recomendaria nossa propriedade para amigos e familiares?*\\n\\n` +\n      `Sua avaliação nos ajuda a melhorar e significa muito para nós! 🙏\\n\\n` +\n      `Se puder também deixar uma avaliação no Airbnb/Booking, ficamos muito gratos! 🌟`\n  }\n}));"
+      },
+      "id": "node-filter-checkouts",
+      "name": "🔍 Filtrar Checkouts de Hoje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 1200]
+    },
+
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "node-split-nps",
+      "name": "🔁 Loop: NPS",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [920, 1200]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution.ieneassessoria.com.br/message/sendText/{{$json.instanceName}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$credentials.evolutionApiKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "number": "={{$json.phone}}",
+          "text": "={{$json.mensagemFinal}}"
+        },
+        "options": {}
+      },
+      "id": "node-send-nps",
+      "name": "📤 Enviar NPS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 1200]
+    }
+
+  ],
+
+  "connections": {
+    "📱 WhatsApp Webhook (Evolution)": {
+      "main": [
+        [
+          { "node": "✅ Responder OK", "type": "main", "index": 0 },
+          { "node": "🔍 Extrair Dados da Mensagem", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "🔍 Extrair Dados da Mensagem": {
+      "main": [
+        [{ "node": "🤖 IA - Detectar Intenção e Gerar Resposta", "type": "main", "index": 0 }]
+      ]
+    },
+    "🤖 IA - Detectar Intenção e Gerar Resposta": {
+      "main": [
+        [{ "node": "📋 Parsear Resposta da IA", "type": "main", "index": 0 }]
+      ]
+    },
+    "📋 Parsear Resposta da IA": {
+      "main": [
+        [{ "node": "🔀 Roteador por Intenção", "type": "main", "index": 0 }]
+      ]
+    },
+    "🔀 Roteador por Intenção": {
+      "main": [
+        [{ "node": "📝 Montar: Boas-vindas + Solicitar Docs", "type": "main", "index": 0 }],
+        [{ "node": "📝 Montar: Confirmar Documentos", "type": "main", "index": 0 }],
+        [{ "node": "📝 Montar: Instruções Check-in", "type": "main", "index": 0 }],
+        [{ "node": "📝 Montar: Alerta Manutenção", "type": "main", "index": 0 }],
+        [{ "node": "📝 Montar: Resposta IA Genérica", "type": "main", "index": 0 }]
+      ]
+    },
+    "📝 Montar: Boas-vindas + Solicitar Docs": {
+      "main": [[{ "node": "📤 Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 }]]
+    },
+    "📝 Montar: Confirmar Documentos": {
+      "main": [[{ "node": "📤 Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 }]]
+    },
+    "📝 Montar: Instruções Check-in": {
+      "main": [[{ "node": "📤 Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 }]]
+    },
+    "📝 Montar: Alerta Manutenção": {
+      "main": [
+        [{ "node": "📤 Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 }],
+        [{ "node": "📤 Alertar Gestor (Manutenção)", "type": "main", "index": 0 }]
+      ]
+    },
+    "📝 Montar: Resposta IA Genérica": {
+      "main": [[{ "node": "📤 Enviar WhatsApp (Evolution API)", "type": "main", "index": 0 }]]
+    },
+    "📤 Enviar WhatsApp (Evolution API)": {
+      "main": [[{ "node": "🔍 Chatwoot: Buscar Contato", "type": "main", "index": 0 }]]
+    },
+    "🔍 Chatwoot: Buscar Contato": {
+      "main": [[{ "node": "🔀 Contato existe no Chatwoot?", "type": "main", "index": 0 }]]
+    },
+    "🔀 Contato existe no Chatwoot?": {
+      "main": [[{ "node": "❓ Contato já existe?", "type": "main", "index": 0 }]]
+    },
+    "❓ Contato já existe?": {
+      "main": [
+        [{ "node": "🔗 Consolidar Contact ID", "type": "main", "index": 0 }],
+        [{ "node": "➕ Chatwoot: Criar Contato", "type": "main", "index": 0 }]
+      ]
+    },
+    "➕ Chatwoot: Criar Contato": {
+      "main": [[{ "node": "🔗 Consolidar Contact ID", "type": "main", "index": 0 }]]
+    },
+    "🔗 Consolidar Contact ID": {
+      "main": [[{ "node": "💬 Chatwoot: Criar Conversa", "type": "main", "index": 0 }]]
+    },
+    "💬 Chatwoot: Criar Conversa": {
+      "main": [[{ "node": "📩 Chatwoot: Registrar Mensagem", "type": "main", "index": 0 }]]
+    },
+
+    "⏰ Agendamento: 10h - Lembrete Check-in": {
+      "main": [[{ "node": "🗄️ Supabase: Buscar Check-ins Amanhã", "type": "main", "index": 0 }]]
+    },
+    "🗄️ Supabase: Buscar Check-ins Amanhã": {
+      "main": [[{ "node": "🔍 Filtrar Check-ins de Amanhã", "type": "main", "index": 0 }]]
+    },
+    "🔍 Filtrar Check-ins de Amanhã": {
+      "main": [[{ "node": "🔁 Loop: Check-ins", "type": "main", "index": 0 }]]
+    },
+    "🔁 Loop: Check-ins": {
+      "main": [
+        [{ "node": "📤 Enviar Lembrete Check-in", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+
+    "⏰ Agendamento: 12h - NPS Pós-Checkout": {
+      "main": [[{ "node": "🗄️ Supabase: Buscar Checkouts de Hoje", "type": "main", "index": 0 }]]
+    },
+    "🗄️ Supabase: Buscar Checkouts de Hoje": {
+      "main": [[{ "node": "🔍 Filtrar Checkouts de Hoje", "type": "main", "index": 0 }]]
+    },
+    "🔍 Filtrar Checkouts de Hoje": {
+      "main": [[{ "node": "🔁 Loop: NPS", "type": "main", "index": 0 }]]
+    },
+    "🔁 Loop: NPS": {
+      "main": [
+        [{ "node": "📤 Enviar NPS", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "zapcentral-aluguel-temporada"
+  }
+}
