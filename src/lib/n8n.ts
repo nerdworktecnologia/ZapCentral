@@ -1,10 +1,7 @@
 const N8N_URL = (import.meta.env.VITE_N8N_URL as string) ?? "https://automacao.ieneassessoria.com.br";
 const N8N_API_KEY = (import.meta.env.VITE_N8N_API_KEY as string) ?? "";
 
-const headers = {
-  "X-N8N-API-KEY": N8N_API_KEY,
-  "Content-Type": "application/json",
-};
+const USE_PROXY = typeof window !== "undefined" && !window.location.hostname.includes("localhost");
 
 export type N8nWorkflow = {
   id: string;
@@ -26,7 +23,22 @@ export type N8nExecution = {
 };
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${N8N_URL}/api/v1${path}`, { headers, ...options });
+  let url: string;
+  let fetchOptions: RequestInit;
+
+  if (USE_PROXY) {
+    const stripped = path.replace(/^\//, "");
+    const [base, qs] = stripped.split("?");
+    const params = new URLSearchParams(qs ?? "");
+    params.set("path", base);
+    url = `/api/n8n?${params.toString()}`;
+    fetchOptions = { ...options, headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) } };
+  } else {
+    url = `${N8N_URL}/api/v1${path}`;
+    fetchOptions = { headers: { "X-N8N-API-KEY": N8N_API_KEY, "Content-Type": "application/json" }, ...options };
+  }
+
+  const res = await fetch(url, fetchOptions);
   if (!res.ok) throw new Error(`n8n API error: ${res.status}`);
   return res.json();
 }

@@ -1,7 +1,13 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/chatwoot.js": { "memory": 512 },
+    "api/n8n.js": { "memory": 512 }
+  },
   "rewrites": [
+    { "source": "/api/n8n", "destination": "/api/n8n" },
+    { "source": "/api/chatwoot", "destination": "/api/chatwoot" },
     { "source": "/app/:path*", "destination": "/index.html" },
     { "source": "/", "destination": "/index.html" }
   ]
