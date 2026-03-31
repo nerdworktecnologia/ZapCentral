@@ -10,10 +10,10 @@ import { Link } from "react-router-dom";
 
 const activityConfig: Record<string, { color: string; label: string }> = {
   message:  { color: "bg-blue-500",   label: "Mensagem" },
-  status:   { color: "bg-amber-500",  label: "Status" },
-  lead:     { color: "bg-violet-500", label: "Novo lead" },
-  proposal: { color: "bg-sky-500",    label: "Proposta" },
-  deal:     { color: "bg-green-500",  label: "Fechado" },
+  status:   { color: "bg-amber-500",  label: "Documento" },
+  lead:     { color: "bg-violet-500", label: "Reserva" },
+  proposal: { color: "bg-sky-500",    label: "NPS" },
+  deal:     { color: "bg-green-500",  label: "Checkout" },
 };
 
 function KpiCard({ title, value, growth, icon: Icon, prefix = "", accent }: {
@@ -82,7 +82,7 @@ export default function Dashboard() {
         <div>
           <p className="text-sm text-muted-foreground capitalize">{today}</p>
           <h1 className="text-2xl font-bold tracking-tight mt-0.5">{getGreeting()} 👋</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Aqui está o resumo do seu negócio hoje</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Aqui está o resumo das suas propriedades hoje</p>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link to="/app/chat">
@@ -94,8 +94,8 @@ export default function Dashboard() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Leads do Mês"      value={totalLeads}  growth={12.5} icon={Users}       prefix=""     accent="bg-violet-500" />
-        <KpiCard title="Conversões"        value={conversions} growth={8.2}  icon={Target}      prefix=""     accent="bg-emerald-500" />
+        <KpiCard title="Reservas do Mês"   value={totalLeads}  growth={12.5} icon={Users}       prefix=""     accent="bg-violet-500" />
+        <KpiCard title="Check-ins"         value={conversions} growth={8.2}  icon={Target}      prefix=""     accent="bg-emerald-500" />
         <KpiCard title="Faturamento"       value={revenue}     growth={15.3} icon={DollarSign}  prefix="R$ "  accent="bg-blue-500" />
         <KpiCard title="Tempo de Resposta" value="3min"        growth={-22}  icon={Clock}       prefix=""     accent="bg-amber-500" />
       </div>
@@ -105,13 +105,13 @@ export default function Dashboard() {
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Leads & Conversões</CardTitle>
+              <CardTitle className="text-base font-semibold">Reservas & Check-ins</CardTitle>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-violet-500 inline-block" />Leads
+                  <span className="h-2 w-2 rounded-full bg-violet-500 inline-block" />Reservas
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />Conversões
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />Check-ins
                 </span>
               </div>
             </div>

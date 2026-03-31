@@ -5,19 +5,19 @@ import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 
 const aiFeatures = [
-  { id: "auto-response", title: "Resposta Automática", desc: "IA responde automaticamente leads novos com perguntas de qualificação", icon: MessageSquare, defaultOn: true },
-  { id: "suggestions", title: "Sugestões de Resposta", desc: "Sugere respostas contextuais para o operador durante o atendimento", icon: Lightbulb, defaultOn: true },
-  { id: "qualification", title: "Qualificação de Leads", desc: "Faz perguntas sobre nome, interesse e orçamento automaticamente", icon: Bot, defaultOn: false },
-  { id: "follow-up", title: "Follow-up Inteligente", desc: "Envia follow-ups personalizados baseados no contexto da conversa", icon: Zap, defaultOn: false },
+  { id: "auto-response", title: "Boas-vindas ao Hóspede", desc: "IA responde automaticamente hóspedes do Airbnb e Booking.com com instruções de check-in", icon: MessageSquare, defaultOn: true },
+  { id: "suggestions", title: "Sugestões de Resposta", desc: "Sugere respostas contextuais para o operador durante o atendimento ao hóspede", icon: Lightbulb, defaultOn: true },
+  { id: "doc-collection", title: "Coleta de Documentos", desc: "Solicita RG, CPF e selfie automaticamente via WhatsApp antes do check-in", icon: Bot, defaultOn: true },
+  { id: "follow-up", title: "NPS Pós-Estadia", desc: "Envia pesquisa de satisfação automaticamente após o checkout do hóspede", icon: Zap, defaultOn: false },
 ];
 
 const sampleConversation = [
-  { role: "lead" as const, text: "Oi, vi o anúncio de vocês!" },
-  { role: "ai" as const, text: "Olá! 😊 Que bom que nos encontrou! Qual é o seu nome?" },
+  { role: "lead" as const, text: "Oi! Acabei de reservar o apartamento pelo Airbnb 😊" },
+  { role: "ai" as const, text: "Olá! Seja muito bem-vindo(a)! 🏠 Que ótimo ter você conosco! Qual é o seu nome?" },
   { role: "lead" as const, text: "Sou a Marina" },
-  { role: "ai" as const, text: "Prazer, Marina! Qual serviço te interessou mais?" },
-  { role: "lead" as const, text: "O plano empresarial" },
-  { role: "ai" as const, text: "Ótima escolha! O plano empresarial tem ótimos benefícios. Qual seria o orçamento disponível para esse investimento?" },
+  { role: "ai" as const, text: "Prazer, Marina! 😊 Sua reserva está confirmada. Para finalizar o check-in, preciso de alguns documentos. Pode me enviar uma foto do seu RG ou CPF?" },
+  { role: "lead" as const, text: "Claro, aqui está!" },
+  { role: "ai" as const, text: "Perfeito, obrigado! ✅ Documento recebido. Um dia antes do check-in enviarei o endereço completo, código da fechadura e todas as instruções de entrada. Alguma dúvida?" },
 ];
 
 export default function AI() {
@@ -33,7 +33,7 @@ export default function AI() {
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold">IA de Atendimento</h1>
-        <p className="text-muted-foreground text-sm">Configure como a IA interage com seus leads</p>
+        <p className="text-muted-foreground text-sm">Configure como a IA interage com seus hóspedes do Airbnb e Booking.com</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
