@@ -2,7 +2,6 @@ const CW_URL = (import.meta.env.VITE_CHATWOOT_URL as string) ?? "https://chat.ie
 const CW_TOKEN = (import.meta.env.VITE_CHATWOOT_TOKEN as string) ?? "ZtgDLEF4TtVzqX1R55TcGSC2";
 const CW_ACCOUNT = (import.meta.env.VITE_CHATWOOT_ACCOUNT as string) ?? "1";
 
-// Use serverless proxy in production to avoid CORS; direct in dev
 const USE_PROXY = typeof window !== "undefined" && !window.location.hostname.includes("localhost");
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -10,7 +9,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   let fetchOptions: RequestInit;
 
   if (USE_PROXY) {
-    // Strip leading slash and pass as query param to /api/chatwoot
     const stripped = path.replace(/^\//, "");
     const [base, qs] = stripped.split("?");
     const params = new URLSearchParams(qs ?? "");
@@ -52,7 +50,7 @@ export type CWConversation = {
 export type CWMessage = {
   id: number;
   content: string;
-  message_type: number; // 0=incoming, 1=outgoing
+  message_type: number;
   created_at: number;
   sender?: { name: string };
 };
@@ -69,49 +67,41 @@ export const chatwoot = {
   async getContacts(page = 1, search = ""): Promise<{ contacts: CWContact[]; total: number }> {
     const params = new URLSearchParams({ page: String(page) });
     if (search) params.set("q", search);
-    const data = await request<{ payload: CWContact[]; meta: { count: number } }>(
-      `/contacts?${params}`,
-    );
+    const data = await request<{ payload: CWContact[]; meta: { count: number } }>(`/contacts?${params}`);
     return { contacts: data.payload, total: data.meta.count };
   },
 
   async getConversations(page = 1, status = "open"): Promise<{ conversations: CWConversation[]; total: number }> {
     const params = new URLSearchParams({ page: String(page), status });
-    const data = await request<{ data: { payload: CWConversation[]; meta: { all_count: number } } }>(
-      `/conversations?${params}`,
-    );
+    const data = await request<{ data: { payload: CWConversation[]; meta: { all_count: number } } }>(`/conversations?${params}`);
     return { conversations: data.data.payload, total: data.data.meta.all_count };
   },
 
   async getConversationMessages(conversationId: number): Promise<CWMessage[]> {
-    const data = await request<{ payload: CWMessage[] }>(
-      `/conversations/${conversationId}/messages`,
-    );
+    const data = await request<{ payload: CWMessage[] }>(`/conversations/${conversationId}/messages`);
     return data.payload;
   },
 
   async getReports(): Promise<CWReport> {
-    const data = await request<CWReport>(`/reports/summary`);
-    return data;
+    return request<CWReport>(`/reports/summary`);
   },
 
   async updateConversationStatus(id: number, status: "open" | "resolved" | "pending"): Promise<void> {
     await request(`/conversations/${id}/toggle_status`, {
       method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
   },
 
   async sendMessage(conversationId: number, content: string): Promise<CWMessage> {
-    const data = await request<{ id: number; content: string; message_type: number; created_at: number; sender?: { name: string } }>(
-      `/conversations/${conversationId}/messages`,
-      {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ content, message_type: "outgoing", private: false }),
-      },
-    );
-    return data as CWMessage;
+    return request<CWMessage>(`/conversations/${conversationId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, message_type: "outgoing", private: false }),
+    });
   },
+
+  CW_URL,
+  CW_ACCOUNT,
 };
