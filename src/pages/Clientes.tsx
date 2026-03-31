@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Phone, Mail, ExternalLink, AlertCircle } from "lucide-react";
+import { Search, Phone, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { chatwoot } from "@/lib/chatwoot";
-
-const CW_URL = (import.meta.env.VITE_CHATWOOT_URL as string) ?? "https://chat.ieneassessoria.com.br";
-const CW_ACCOUNT = (import.meta.env.VITE_CHATWOOT_ACCOUNT as string) ?? "1";
+import { supabase } from "@/integrations/supabase/client";
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
@@ -19,65 +17,56 @@ function initials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
+const statusColor: Record<string, string> = {
+  novo: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  atendimento: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+  proposta: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+  fechado: "bg-green-500/10 text-green-600 border-green-500/20",
+};
+
+const tagColor: Record<string, string> = {
+  quente: "bg-red-500/10 text-red-600 border-red-500/20",
+  frio: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+  cliente: "bg-green-500/10 text-green-600 border-green-500/20",
+};
+
 export default function Clientes() {
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["cw-contacts", debouncedSearch],
-    queryFn: () => chatwoot.getContacts(1, debouncedSearch),
-    retry: 1,
+  const { data: leads = [], isLoading } = useQuery({
+    queryKey: ["leads"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
   });
 
-  function handleSearch(value: string) {
-    setSearch(value);
-    clearTimeout((window as any).__searchTimer);
-    (window as any).__searchTimer = setTimeout(() => setDebouncedSearch(value), 400);
-  }
-
-  const contacts = data?.contacts ?? [];
-  const total = data?.total ?? 0;
+  const filtered = leads.filter((l) =>
+    l.name.toLowerCase().includes(search.toLowerCase()) ||
+    l.phone.includes(search) ||
+    l.email.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
-          <p className="text-sm text-muted-foreground">
-            {total} contatos no Chatwoot
-          </p>
-        </div>
-        <a
-          href={`${CW_URL}/app/accounts/${CW_ACCOUNT}/contacts`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Abrir Chatwoot
-        </a>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
+        <p className="text-sm text-muted-foreground">{leads.length} contatos cadastrados</p>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nome ou telefone..."
+          placeholder="Buscar por nome, telefone ou e-mail..."
           value={search}
-          onChange={(e) => handleSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
         />
       </div>
-
-      {isError && (
-        <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-medium">Erro ao carregar contatos do Chatwoot</p>
-            <p className="text-muted-foreground mt-0.5">{(error as Error)?.message ?? "Verifique se o token e a URL do Chatwoot estão corretos nas configurações."}</p>
-            <p className="text-muted-foreground mt-1 text-xs">Possível causa: CORS bloqueando requisição de localhost. Em produção isso será resolvido automaticamente.</p>
-          </div>
-        </div>
-      )}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -92,49 +81,53 @@ export default function Clientes() {
                   <TableHead>Contato</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>E-mail</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tag</TableHead>
                   <TableHead>Cadastrado em</TableHead>
-                  <TableHead>Última atividade</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contacts.length === 0 ? (
+                {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
                       {search ? "Nenhum contato encontrado." : "Nenhum contato cadastrado."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  contacts.map((c) => (
-                    <TableRow key={c.id} className="hover:bg-muted/30">
+                  filtered.map((l) => (
+                    <TableRow key={l.id} className="hover:bg-muted/30">
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           <div className="h-8 w-8 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center shrink-0">
-                            {initials(c.name || c.phone_number || "?")}
+                            {initials(l.name)}
                           </div>
-                          <span className="font-medium text-sm">{c.name || "—"}</span>
+                          <span className="font-medium text-sm">{l.name}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {c.phone_number ? (
-                          <div className="flex items-center gap-1.5 text-sm">
-                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                            {c.phone_number}
-                          </div>
-                        ) : "—"}
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                          {l.phone}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {c.email ? (
-                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Mail className="h-3.5 w-3.5" />
-                            {c.email}
-                          </div>
-                        ) : "—"}
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <Mail className="h-3.5 w-3.5" />
+                          {l.email || "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`text-xs ${statusColor[l.status] ?? ""}`}>
+                          {l.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`text-xs ${tagColor[l.tag] ?? ""}`}>
+                          {l.tag}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(c.created_at)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(c.last_activity_at)}
+                        {formatDate(l.created_at)}
                       </TableCell>
                     </TableRow>
                   ))
