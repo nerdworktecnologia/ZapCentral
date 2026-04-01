@@ -203,7 +203,7 @@
 
     {
       "parameters": {
-        "jsCode": "// Alerta de manutenção para o gestor\n// ⚠️ EDITE o número do gestor abaixo\nconst { pushName, message, phone } = $json;\n\nconst NUMERO_GESTOR = '5511999999999'; // ← COLOQUE SEU NÚMERO AQUI\n\nconst textoHospede = `Olá, ${pushName}! Recebi seu relato e já acionei o suporte. 🔧\\n\\nNosso responsável entrará em contato em breve para resolver o problema.\\nLamentamos o inconveniente e agradecemos a compreensão! 🙏`;\n\nconst textoGestor = `⚠️ *MANUTENÇÃO SOLICITADA*\\n\\nHóspede: ${pushName}\\nTelefone: ${phone}\\nRelato: ${message}\\n\\nPor favor, entre em contato com o hóspede para resolver.`;\n\nreturn [\n  { json: { ...$json, mensagemFinal: textoHospede, phoneGestor: NUMERO_GESTOR, mensagemGestor: textoGestor } }\n];"
+        "jsCode": "// Alerta de manutenção para o gestor\n// ⚠️ EDITE o número do gestor abaixo\nconst { pushName, message, phone } = $json;\n\nconst NUMERO_GESTOR = '554588219903'; // ← NÚMERO DO GESTOR\n\nconst textoHospede = `Olá, ${pushName}! Recebi seu relato e já acionei o suporte. 🔧\\n\\nNosso responsável entrará em contato em breve para resolver o problema.\\nLamentamos o inconveniente e agradecemos a compreensão! 🙏`;\n\nconst textoGestor = `⚠️ *MANUTENÇÃO SOLICITADA*\\n\\nHóspede: ${pushName}\\nTelefone: ${phone}\\nRelato: ${message}\\n\\nPor favor, entre em contato com o hóspede para resolver.`;\n\nreturn [\n  { json: { ...$json, mensagemFinal: textoHospede, phoneGestor: NUMERO_GESTOR, mensagemGestor: textoGestor } }\n];"
       },
       "id": "node-msg-manutencao",
       "name": "📝 Montar: Alerta Manutenção",
