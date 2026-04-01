@@ -6,6 +6,7 @@ import { ProblemSolutionSection } from "@/components/marketing/sections/ProblemS
 import { FeaturesHowSection } from "@/components/marketing/sections/FeaturesHowSection";
 import { BenefitsTestimonialsSection } from "@/components/marketing/sections/BenefitsTestimonialsSection";
 import { AboutFinalSection } from "@/components/marketing/sections/AboutFinalSection";
+import { ToursSection } from "@/components/marketing/sections/ToursSection";
 import { Bot, Kanban, Bell, BarChart3, Globe2, Star, FileText, Wallet, UserCheck } from "lucide-react";
 
 const features = [
@@ -59,6 +60,7 @@ const features = [
 const navItems = [
   { label: "Recursos", id: "recursos" },
   { label: "Como funciona", id: "como-funciona" },
+  { label: "Traslados", id: "traslados" },
   { label: "Depoimentos", id: "depoimentos" },
   { label: "Sobre", id: "sobre" },
   { label: "Indique e Ganhe", id: "indique" },
@@ -80,6 +82,7 @@ export default function Landing() {
       <SocialProofSection />
       <ProblemSolutionSection />
       <FeaturesHowSection features={features} />
+      <ToursSection />
       <BenefitsTestimonialsSection />
       <AboutFinalSection />
 
