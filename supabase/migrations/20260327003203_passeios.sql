@@ -38,9 +38,21 @@ CREATE POLICY "Leitura pública de passeios"
 CREATE POLICY "Gestão autenticada de passeios"
   ON passeios FOR ALL USING (auth.role() = 'authenticated');
 
--- Dados iniciais de exemplo
+-- Dados iniciais — Turismo Foz do Iguaçu
+-- Valores referentes a veículo privativo até 4 passageiros (ingresso não incluso)
 INSERT INTO passeios (nome, descricao, valor, duracao, vagas_total, vagas_disponiveis, categoria) VALUES
-  ('City Tour Histórico', 'Passeio pelos principais pontos históricos da cidade com guia especializado.', 85.00, '4 horas', 20, 20, 'Cultural'),
-  ('Trilha na Mata Atlântica', 'Trilha guiada com nível moderado, cachoeira ao final do percurso.', 120.00, '6 horas', 12, 12, 'Aventura'),
-  ('Passeio de Barco', 'Navegação pelas ilhas com paradas para mergulho e snorkel.', 180.00, '1 dia inteiro', 15, 15, 'Náutico'),
-  ('Tour Gastronômico', 'Visita aos restaurantes e feiras locais com degustação inclusa.', 95.00, '3 horas', 10, 10, 'Gastronomia');
+  (
+    'Cataratas do Iguaçu (Brasil)',
+    'Visite o lado brasileiro das Cataratas do Iguaçu, uma das maiores maravilhas naturais do mundo. Veículo privativo com motorista. Até 4 pax: R$ 260 | Até 6 pax: R$ 300. Ingresso não incluso.',
+    260.00, '4 horas', 6, 6, 'Aventura'
+  ),
+  (
+    'Parque das Aves',
+    'O maior parque de aves da América Latina, com mais de 900 espécies. Ótimo para famílias. Fica ao lado das Cataratas — pode ser combinado no mesmo dia. Até 4 pax: R$ 260 | Até 6 pax: R$ 300. Ingresso não incluso.',
+    260.00, '3 horas', 6, 6, 'Cultural'
+  ),
+  (
+    'Itaipu — Usina Hidrelétrica',
+    'Conheça uma das maiores usinas hidrelétricas do mundo. Disponível visita diurna e o espetáculo Itaipu Luz (noturno). Até 4 pax: R$ 260 | Até 6 pax: R$ 300. Ingresso não incluso.',
+    260.00, '3 horas', 6, 6, 'Cultural'
+  );
