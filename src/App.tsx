@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -5,21 +6,35 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/AppShell";
 import { MarketingLayout } from "@/components/MarketingLayout";
-import Index from "./pages/Index";
-import CRM from "./pages/CRM";
-import Chat from "./pages/Chat";
-import AI from "./pages/AI";
-import Automacao from "./pages/Automacao";
-import Clientes from "./pages/Clientes";
-import Passeios from "./pages/Passeios";
-import NPS from "./pages/NPS";
-import Documentos from "./pages/Documentos";
-import Pagamentos from "./pages/Pagamentos";
-import Relatorios from "./pages/Relatorios";
-import Configuracoes from "./pages/Configuracoes";
-import NotFound from "./pages/NotFound";
-import Landing from "./pages/Landing";
-import Obrigado from "./pages/Obrigado";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const Index        = lazy(() => import("./pages/Index"));
+const CRM          = lazy(() => import("./pages/CRM"));
+const Chat         = lazy(() => import("./pages/Chat"));
+const AI           = lazy(() => import("./pages/AI"));
+const Automacao    = lazy(() => import("./pages/Automacao"));
+const Clientes     = lazy(() => import("./pages/Clientes"));
+const Passeios     = lazy(() => import("./pages/Passeios"));
+const NPS          = lazy(() => import("./pages/NPS"));
+const Documentos   = lazy(() => import("./pages/Documentos"));
+const Pagamentos   = lazy(() => import("./pages/Pagamentos"));
+const Relatorios   = lazy(() => import("./pages/Relatorios"));
+const Configuracoes= lazy(() => import("./pages/Configuracoes"));
+const NotFound     = lazy(() => import("./pages/NotFound"));
+const Landing      = lazy(() => import("./pages/Landing"));
+const Obrigado     = lazy(() => import("./pages/Obrigado"));
+
+function PageLoader() {
+  return (
+    <div className="p-6 space-y-4 max-w-7xl mx-auto">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+      </div>
+      <Skeleton className="h-64" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient();
 
@@ -29,6 +44,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route element={<MarketingLayout />}>
             <Route path="/" element={<Landing />} />
@@ -61,6 +77,7 @@ const App = () => (
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
